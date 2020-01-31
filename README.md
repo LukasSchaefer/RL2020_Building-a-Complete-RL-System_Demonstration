@@ -12,7 +12,7 @@ To run any python scripts, you will need [OpenAI Gym](https://gym.openai.com) wh
 To run the jupyter notebook provided with the code, follow the instructions on the [Jupyter mainpage](https://jupyter.org/).
 
 ## Code
-All code is written in Python3 and provided as separate scripts and all-together in one Jupyter notebook available [here](rl_demo).
+All code is written in Python3 and provided as separate scripts and all-together in one Jupyter notebook available [here](https://github.com/LukasSchaefer/RL2020_Building-a-Complete-RL-System_Demonstration/blob/master/rl_demo.ipynb).
 
 ## Contact
 This lecture was delivered by the TA team consisting of
