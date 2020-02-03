@@ -1,32 +1,48 @@
 import gym
+import matplotlib.pyplot as plt
 import numpy as np
+import random
 from time import sleep
 
 from sarsa import SARSA
 from utils import visualise_q_table, visualise_policy
+from plot_utils import plot_timesteps, plot_timesteps_shaded
 
+CONFIG_SLIPPERY = {
+    "env": "FrozenLake-v0",
+    "total_eps": 100000,
+    "eval_episodes": 100,
+    "eval_freq": 1000,
+    "gamma": 0.99,
+    "alpha": 1e-1,
+    "epsilon": 0.9,
+}
 
-CONFIG = {
+CONFIG_NOTSLIPPERY = {
     "env": "FrozenLakeNotSlippery-v0",
-    "target_reward": 1,
-    "eval_solved_goal": 10,
-    "total_eps": 1000,
-    "eval_episodes": 1,
-    "eval_freq": 10,
+    "total_eps": 500,
+    "eval_episodes": 100,
+    "eval_freq": 5,
     "gamma": 0.99,
     "alpha": 0.1,
     "epsilon": 0.9,
 }
 
-RENDER = False
+# CONFIG = CONFIG_SLIPPERY
+CONFIG = CONFIG_NOTSLIPPERY
 
-def evaluate(env, config, q_table, eval_episodes=10, render=False, output=True):
+RENDER = False
+SEEDS = [i for i in range(10)]
+
+
+def evaluate(env, config, q_table, episode, eval_episodes=10, render=False, output=True):
     """
     Evaluate configuration of SARSA on given environment initialised with given Q-table
 
     :param env (gym.Env): environment to execute evaluation on
     :param config (Dict[str, float]): configuration dictionary containing hyperparameters
     :param q_table (Dict[(Obs, Act), float]): Q-table mapping observation-action to Q-values
+    :param episode (int): episodes of training completed
     :param eval_episodes (int): number of evaluation episodes
     :param render (bool): flag whether evaluation runs should be rendered
     :param output (bool): flag whether mean evaluation performance should be printed
@@ -65,8 +81,8 @@ def evaluate(env, config, q_table, eval_episodes=10, render=False, output=True):
     std_reward = np.std(episodic_rewards)
 
     if output:
-        print(f"EVALUATION: MEAN REWARD OF {mean_reward}")
-        if mean_reward == 1.0:
+        print(f"EVALUATION ({episode}/{CONFIG['total_eps']}): MEAN REWARD OF {mean_reward}")
+        if mean_reward >= 0.9:
             print(f"EVALUATION: SOLVED")
         else:
             print(f"EVALUATION: NOT SOLVED!")
@@ -92,12 +108,13 @@ def train(env, config, output=True):
     )
 
     step_counter = 0
-    max_steps = config["total_eps"]
+    # 100 as estimate of max steps to take in an episode
+    max_steps = config["total_eps"] * 100
     
     total_reward = 0
     evaluation_reward_means = []
     evaluation_reward_stds = []
-    eval_solved = 0
+    evaluation_epsilons = []
 
     for eps_num in range(config["total_eps"]):
         obs = env.reset()
@@ -126,32 +143,57 @@ def train(env, config, output=True):
                     env,
                     config,
                     agent.q_table,
+                    eps_num,
                     eval_episodes=config["eval_episodes"],
                     render=RENDER,
                     output=output
             )
             evaluation_reward_means.append(mean_reward)
             evaluation_reward_stds.append(std_reward)
+            evaluation_epsilons.append(agent.epsilon)
 
-            if mean_reward >= config["target_reward"]:
-                eval_solved += 1
-                if output:
-                    print(f"Reached reward {mean_reward} >= {config['target_reward']} (target reward)")
-                if eval_solved == config["eval_solved_goal"]:
-                    if output:
-                        print(f"Solved evaluation {eval_solved} times in a row --> terminate training")
-                    break
-            else:
-                eval_solved = 0
-
-    return total_reward, evaluation_reward_means, evaluation_reward_stds, agent.q_table
-
+    return total_reward, evaluation_reward_means, evaluation_reward_stds, evaluation_epsilons, agent.q_table
 
 if __name__ == "__main__":
     env = gym.make(CONFIG["env"])
-    
-    total_reward, _, _, q_table = train(env, CONFIG)
-    # print("Q-table:")
-    # visualise_q_table(q_table)
-    print()
-    visualise_policy(q_table)
+    eval_reward_means = []
+    eval_reward_stds = []
+    eval_epsilons = []
+    for seed in SEEDS:
+        print(f"SARSA Training for seed={seed}")
+        random.seed(seed)
+        np.random.seed(seed)
+        
+        reward_means = []
+        reward_stds = []
+        total_reward, reward_means, reward_stds, epsilons, q_table = train(env, CONFIG, output=False)
+        # print("Q-table:")
+        # visualise_q_table(q_table)
+        visualise_policy(q_table)
+        eval_reward_means.append(reward_means)
+        eval_reward_stds.append(reward_stds)
+        eval_epsilons.append(epsilons)
+
+    eval_reward_means = np.array(eval_reward_means).mean(axis=0)
+    eval_reward_stds = np.array(eval_reward_stds).mean(axis=0)
+    eval_epsilons = np.array(eval_epsilons).mean(axis=0)
+    plot_timesteps_shaded(
+        eval_reward_means,
+        eval_reward_stds,
+        CONFIG["eval_freq"],
+        "SARSA Evaluation Rewards",
+        "Timesteps",
+        "Mean Evaluation Reward",
+        "SARSA",
+    )
+
+    plot_timesteps(
+        eval_epsilons,
+        CONFIG["eval_freq"],
+        "SARSA Epsilon Decay",
+        "Timesteps",
+        "Epsilon",
+        "SARSA",
+    )
+
+    plt.show()

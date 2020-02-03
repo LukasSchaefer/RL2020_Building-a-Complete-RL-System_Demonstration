@@ -9,7 +9,13 @@ register(
     kwargs={'map_name' : '4x4', 'is_slippery': False},
 )
 
-def act_to_str(act: int):
+def act_to_str(act: int) -> str:
+    """
+    Map actions (of FrozenLake environment) to interpretable symbols corresponding to directions
+
+    :param act (int): action to map to string
+    :return (str): interpretable action name
+    """
     if act == 0:
         return "L"
     elif act == 1:
