@@ -11,6 +11,7 @@ from plot_utils import plot_timesteps, plot_timesteps_shaded
 CONFIG_SLIPPERY = {
     "env": "FrozenLake-v0",
     "total_eps": 100000,
+    "max_episode_steps": 100,
     "eval_episodes": 100,
     "eval_freq": 1000,
     "gamma": 0.99,
@@ -21,6 +22,7 @@ CONFIG_SLIPPERY = {
 CONFIG_NOTSLIPPERY = {
     "env": "FrozenLakeNotSlippery-v0",
     "total_eps": 500,
+    "max_episode_steps": 100,
     "eval_episodes": 100,
     "eval_freq": 5,
     "gamma": 0.99,
@@ -35,7 +37,7 @@ RENDER = False
 SEEDS = [i for i in range(10)]
 
 
-def evaluate(env, config, q_table, episode, eval_episodes=10, render=False, output=True):
+def evaluate(env, config, q_table, episode, render=False, output=True):
     """
     Evaluate configuration of SARSA on given environment initialised with given Q-table
 
@@ -43,7 +45,6 @@ def evaluate(env, config, q_table, episode, eval_episodes=10, render=False, outp
     :param config (Dict[str, float]): configuration dictionary containing hyperparameters
     :param q_table (Dict[(Obs, Act), float]): Q-table mapping observation-action to Q-values
     :param episode (int): episodes of training completed
-    :param eval_episodes (int): number of evaluation episodes
     :param render (bool): flag whether evaluation runs should be rendered
     :param output (bool): flag whether mean evaluation performance should be printed
     :return (float, float): mean and standard deviation of reward received over episodes
@@ -56,7 +57,7 @@ def evaluate(env, config, q_table, episode, eval_episodes=10, render=False, outp
     )
     eval_agent.q_table = q_table
     episodic_rewards = []
-    for eps_num in range(eval_episodes):
+    for eps_num in range(config["eval_episodes"]):
         obs = env.reset()
         if render:
             env.render()
@@ -64,7 +65,9 @@ def evaluate(env, config, q_table, episode, eval_episodes=10, render=False, outp
         episodic_reward = 0
         done = False
 
-        while not done:
+        steps = 0
+        while not done and steps <= config["max_episode_steps"]:
+            steps += 1
             act = eval_agent.act(obs)
             n_obs, reward, done, info = env.step(act)
             if render:
@@ -109,7 +112,7 @@ def train(env, config, output=True):
 
     step_counter = 0
     # 100 as estimate of max steps to take in an episode
-    max_steps = config["total_eps"] * 100
+    max_steps = config["total_eps"] * config["max_episode_steps"]
     
     total_reward = 0
     evaluation_reward_means = []
@@ -119,12 +122,13 @@ def train(env, config, output=True):
     for eps_num in range(config["total_eps"]):
         obs = env.reset()
         episodic_reward = 0
+        steps = 0
         done = False
 
         # take first action
         act = agent.act(obs)
 
-        while not done:
+        while not done and steps < config["max_episode_steps"]:
             n_obs, reward, done, info = env.step(act)
             step_counter += 1
             episodic_reward += reward
@@ -144,7 +148,6 @@ def train(env, config, output=True):
                     config,
                     agent.q_table,
                     eps_num,
-                    eval_episodes=config["eval_episodes"],
                     render=RENDER,
                     output=output
             )
