@@ -184,9 +184,9 @@ if __name__ == "__main__":
         eval_reward_means,
         eval_reward_stds,
         CONFIG["eval_freq"],
-        "SARSA Evaluation Rewards",
+        "SARSA Evaluation Returns",
         "Timesteps",
-        "Mean Evaluation Reward",
+        "Mean Evaluation Returns",
         "SARSA",
     )
 
